@@ -6,7 +6,9 @@ import json
 class Settings:
     def __init__(self):
         # Path to the settings database
-        self.settings_db_path = 'settings.db'
+        self.db_folder = 'data'
+        self.name = 'settings.db'
+        self.settings_db_path = os.path.join(self.db_folder, self.name)
 
         # Ensure the database file exists
         if not os.path.exists(self.settings_db_path):
