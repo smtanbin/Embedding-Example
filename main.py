@@ -1,10 +1,14 @@
+# main.py
+
 import json
 import os
 import logging
 from datetime import datetime
 
+from src.Agent import Agent
 from src.Embeddings import Embedding
 from src.database.Settings import Settings
+
 
 def load_and_validate_json(file_path):
     if not os.path.exists(file_path):
@@ -22,6 +26,7 @@ def load_and_validate_json(file_path):
     except json.JSONDecodeError as e:
         logging.error(f"Error decoding JSON: {e}")
         return None
+
 
 def update_settings_from_json(settings, json_data):
     try:
@@ -52,10 +57,11 @@ def update_settings_from_json(settings, json_data):
         logging.error(f"Error updating settings.json: {e}")
         raise
 
+
 def main():
     # Set up logging
     logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-    
+
     # Initialize settings
     settings = Settings()
 
@@ -78,28 +84,25 @@ def main():
     ollama_url = settings.get('ollama_url')
     collection_name = settings.get('collection_name')
     embedding_model = settings.get('embedding_model')
-    port = settings.get('port')
-    sqlite_web_port = settings.get('sqlite_web_port')
-    flask_host = settings.get('flask_host')
+    model = "llama3.1-8b"
 
     # Initialize Embedding with settings
     emb = Embedding(ollama_url, embedding_model, collection_name)
 
     # Embed documents
     emb.embed("books", int(settings.get('chunk_size', '500')))
+    # Initialize Agent with the Embedding instance
+    agent = Agent(emb, ollama_url, model)
 
-    # Query embeddings
-    data = emb.query_embeddings("AMD RYZEN")
-    logging.info("Query results:")
-    logging.info(json.dumps({
-        'ollama_url': ollama_url,
-        'collection_name': collection_name,
-        'embedding_model': embedding_model,
-        'port': port,
-        'sqlite_web_port': sqlite_web_port,
-        'flask_host': flask_host,
-        'query_result': data
-    }, indent=4))
+    # Use the Agent to process input
+    while True:
+        print("Enter 'exit' to quit.")
+        query = input("Enter a query: ")
+        if query == 'exit':
+            break
+        response = agent.input(query)
+        print(response)
+
 
 if __name__ == '__main__':
     main()

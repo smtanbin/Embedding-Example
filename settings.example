@@ -3,12 +3,11 @@
         "ollama_url": "http://127.0.0.1:11434",
         "collection_name": "standardBank",
         "embedding_model": "snowflake-arctic-embed:latest",
-        "model": "llama3.1-8b",
+         "model": "llama3.1-8b",
         "port": 3000,
         "sqlite_web_port": 3300,
-        "flask_host": "0.0.0.0",
-
+        "flask_host": "0.0.0.0"
     },
     "valid": false,
-    "updateAt": "2024-08-21T22:48:52.886158"
+    "updateAt": "2024-08-21T18:02:24.004557"
 }

@@ -1,11 +1,14 @@
 import logging
 import os
 import numpy as np
+
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.docstore.document import Document
+from langchain_openai import OpenAI
 from langchain_community.embeddings import OllamaEmbeddings
 from src.database.Database import Database
+
 
 class Embedding:
     def __init__(self, ollama_url: str, embedding_ollama_model: str, database_name: str):
@@ -27,12 +30,12 @@ class Embedding:
             return result
         except Exception as e:
             self.logger.error(f"Error during embedding process: {e}")
-            raise
+            return None
 
     def __document_loader(self, custom_path, chunk_size):
         try:
             self.logger.info(f"Loading document from path: {custom_path}.")
-            directory_path = os.path.join('documents', custom_path)
+            directory_path = os.path.abspath(os.path.join('documents', custom_path))
 
             if not os.path.isdir(directory_path):
                 raise FileNotFoundError(f"The directory at {directory_path} does not exist.")
@@ -43,12 +46,21 @@ class Embedding:
             for filename in os.listdir(directory_path):
                 if filename.endswith('.pdf'):
                     pdf_path = os.path.join(directory_path, filename)
+                    read_marker_path = pdf_path + '.read'
+
+                    if os.path.exists(read_marker_path):
+                        self.logger.info(f"Skipping already processed file: {filename}")
+                        continue
 
                     texts = ""
-                    with open(pdf_path, 'rb') as file:
-                        reader = PdfReader(file)
-                        for page in reader.pages:
-                            texts += page.extract_text()
+                    try:
+                        with open(pdf_path, 'rb') as file:
+                            reader = PdfReader(file)
+                            for page in reader.pages:
+                                texts += page.extract_text()
+                    except Exception as e:
+                        self.logger.error(f"Error reading PDF file {pdf_path}: {e}")
+                        continue
 
                     document = Document(page_content=texts)
                     text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=0)
@@ -58,6 +70,10 @@ class Embedding:
                     for i, split in enumerate(splits):
                         chunk_id = f"{document_id}_{i}"
                         all_splits.append(CustomDocument(split, chunk_id))
+
+                    # Create a .read file to mark this PDF as processed
+                    with open(read_marker_path, 'w') as marker_file:
+                        marker_file.write('')
 
             self.logger.info(f"Document loaded and split into {len(all_splits)} chunks.")
             return all_splits
@@ -70,15 +86,25 @@ class Embedding:
 
     def __emb_invoke(self, chunks):
         try:
-            self.logger.info(f"Connecting to Ollama for embedding using model {self.emb_model}.")
-            print(self.ollama_base_url)
-            ollama = OllamaEmbeddings(
-                base_url=self.ollama_base_url,
-                model=self.emb_model
-            )
-            embeddings = ollama.embed_documents([chunk.page_content for chunk in chunks])
-            self.logger.info(f"Embedding completed successfully.")
-            return embeddings
+            key = os.environ.get('OpenAIKey')
+
+            if key:
+                self.logger.info(f"Using OpenAI for embedding with key {key}.")
+                OpenAI.api_key = key
+                embeddings = [OpenAI.Embedding.create(input=chunk.page_content)['data'][0]['embedding'] for chunk in
+                              chunks]
+                self.logger.info(f"Embedding completed successfully using OpenAI.")
+                return embeddings
+            else:
+                self.logger.info(f"Connecting to Ollama for embedding using model {self.emb_model}.")
+
+                ollama = OllamaEmbeddings(
+                    base_url=self.ollama_base_url,
+                    model=self.emb_model
+                )
+                embeddings = ollama.embed_documents([chunk.page_content for chunk in chunks])
+                self.logger.info(f"Embedding completed successfully.")
+                return embeddings
         except Exception as e:
             self.logger.error(f"Error during embedding with Ollama: {e}")
             raise
@@ -115,7 +141,7 @@ class Embedding:
                 distance = np.linalg.norm(query_embedding - db_embedding)
                 if distance < min_distance:
                     min_distance = distance
-                    closest_match = [uuid,db_embedding]
+                    closest_match = [uuid, db_embedding]
             except Exception as e:
                 self.logger.error(f"Error calculating distance: {e}")
 

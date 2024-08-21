@@ -16,7 +16,7 @@ class Database:
 
         # Set the path to the 'data' directory and ensure it exists
         self.db_folder = 'data'
-        self.db_name = db_name +".db"
+        self.db_name = db_name + ".db"
         self.db_path = os.path.join(self.db_folder, self.db_name)
         self.logger.info(f"Database path: {self.db_path}")
 
@@ -114,21 +114,33 @@ class Database:
             self.logger.error(f"Error dropping all data: {e}")
             raise
 
-    import numpy as np
-    import json
-
     def get_all_embeddings(self):
+        try:
+            # Assuming `results` is a list of tuples (uuid, embeddings)
+            results = self._fetch_embeddings_from_db()
+            parsed_results = []
+            for uuid, embeddings in results:
+                if embeddings is not None:
+                    try:
+                        parsed_results.append((uuid, np.array(json.loads(embeddings))))
+                    except json.JSONDecodeError as e:
+                        logging.error(f"Error decoding JSON for uuid {uuid}: {e}")
+                else:
+                    logging.warning(f"Embeddings for uuid {uuid} are None and will be skipped.")
+            return parsed_results
+        except Exception as e:
+            logging.error(f"Error fetching embeddings: {e}")
+            raise
+
+    def _fetch_embeddings_from_db(self):
         try:
             self.cursor.execute('''
                 SELECT uuid, embeddings FROM documents
             ''')
             results = self.cursor.fetchall()
-            # Convert JSON strings to numpy arrays
-            parsed_results = [(uuid, np.array(json.loads(embeddings))) for uuid, embeddings in results]
-            self.logger.info(f"All embeddings retrieved: {parsed_results}")
-            return parsed_results
+            return results
         except sqlite3.Error as e:
-            self.logger.error(f"Error retrieving all embeddings: {e}")
+            logging.error(f"Error fetching embeddings from database: {e}")
             raise
 
     def __del__(self):
