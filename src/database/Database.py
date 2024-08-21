@@ -16,7 +16,7 @@ class Database:
 
         # Set the path to the 'data' directory and ensure it exists
         self.db_folder = 'data'
-        self.db_name = db_name
+        self.db_name = db_name +".db"
         self.db_path = os.path.join(self.db_folder, self.db_name)
         self.logger.info(f"Database path: {self.db_path}")
 

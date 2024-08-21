@@ -1,0 +1,12 @@
+{
+    "config": {
+        "ollama_url": "http://10.140.6.7:3000",
+        "collection_name": "standardBank",
+        "embedding_model": "snowflake-arctic-embed:latest",
+        "port": 3000,
+        "sqlite_web_port": 3300,
+        "flask_host": "0.0.0.0"
+    },
+    "valid": false,
+    "updateAt": "2024-08-21T18:02:24.004557"
+}

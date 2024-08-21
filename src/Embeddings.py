@@ -71,6 +71,7 @@ class Embedding:
     def __emb_invoke(self, chunks):
         try:
             self.logger.info(f"Connecting to Ollama for embedding using model {self.emb_model}.")
+            print(self.ollama_base_url)
             ollama = OllamaEmbeddings(
                 base_url=self.ollama_base_url,
                 model=self.emb_model
